@@ -3,6 +3,12 @@ import pandas as pd
 import plotly.express as px
 import geopandas as gpd
 import random
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+
 st.set_page_config(layout="wide")
 # Load Data (Assumed already cleaned)
 @st.cache_data
@@ -113,12 +119,110 @@ def get_city_image(city):
 # Function to create the map
 def create_map(df_filtered_cases):
     fig = px.scatter_mapbox(df_filtered_cases, lat='lat', lon='lon', size='Faelle', hover_name='Stadt',
-                            title="Crime Cases Map", mapbox_style="carto-positron", zoom=5, height=700, width=1000)
+                            title="Crime Cases Map", mapbox_style="carto-positron", zoom=4.9, height=700, width=1000)
     
     fig.update_layout(clickmode='event+select')  # Enable click events
     return fig
 
+def plot_crimes_vs_inhabitants():
+    df_cases_filtered = df_cases[(df_cases["HZ"] > 0) & (df_cases['Vereinfachte_Straftat'] == "Straftaten insgesamt")]  # Avoid division by zero
+    df_cases_filtered["Inhabitants"] = (df_cases_filtered["Faelle"] * 100000) / df_cases_filtered["HZ"]
+
+    fig = px.scatter(df_cases_filtered, x="Inhabitants", y="Faelle", hover_name="Stadt",
+                     title="Crimes vs. Inhabitants per City",
+                     labels={"Inhabitants": "Number of Inhabitants", "Faelle": "Number of Crimes"})
+
+    st.plotly_chart(fig, use_container_width=True)    
+
+def plot_crimes_vs_inhabitants():
+    # Filter out rows where "HZ" is 0 to avoid division by zero
+    df_cases_filtered = df_cases[(df_cases["HZ"] > 0) & (df_cases["Straftat"]=="Straftaten insgesamt")]  
+    df_cases_filtered["Inhabitants"] = (df_cases_filtered["Faelle"] * 100000) / df_cases_filtered["HZ"]
+
+    # Create the scatter plot
+    fig = px.scatter(df_cases_filtered, x="Inhabitants", y="Faelle", hover_name="Stadt",
+                     title="Crimes vs. Inhabitants per City",
+                     labels={"Inhabitants": "Number of Inhabitants", "Faelle": "Number of Crimes"})
     
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Prepare the data for training
+    X = df_cases_filtered["Inhabitants"].values.reshape(-1, 1)  # Features (Inhabitants)
+    y = df_cases_filtered["Faelle"].values  # Target variable (Number of Crimes)
+    
+    # Split data into 90% training and 10% validation
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=42)
+
+    # Initialize the linear regression model
+    model = LinearRegression()
+
+    # Train the model on the training data
+    model.fit(X_train, y_train)
+
+    # Make predictions on the validation data
+    y_pred = model.predict(X_val)
+
+    # Calculate the Mean Squared Error (MSE) on the validation data
+    mse = mean_squared_error(y_val, y_pred)
+
+    # Display the results
+    st.write(f"Mean Squared Error (MSE) on validation data: {mse:.2f}")
+    st.write(f"Regression Coefficients: Intercept = {model.intercept_:.2f}, Slope = {model.coef_[0]:.2f}")
+
+    # Plot the regression line along with the data points
+    fig_regression = px.scatter(df_cases_filtered, x="Inhabitants", y="Faelle", hover_name="Stadt",
+                                title="Crimes vs. Inhabitants with Regression Line",
+                                labels={"Inhabitants": "Number of Inhabitants", "Faelle": "Number of Crimes"})
+    fig_regression.add_scatter(x=df_cases_filtered["Inhabitants"], 
+                               y=model.predict(df_cases_filtered["Inhabitants"].values.reshape(-1, 1)), 
+                               mode='lines', name="Regression Line", line=dict(color='red'))
+    st.plotly_chart(fig_regression, use_container_width=True)
+
+
+#def plot_crimes_vs_inhabitants():
+    # Filter out rows where "HZ" is 0 to avoid division by zero
+#    df_cases_filtered = df_cases[(df_cases["HZ"] > 0) & (df_cases["Straftat"]=="Straftaten insgesamt")]  
+#    df_cases_filtered["Inhabitants"] = (df_cases_filtered["Faelle"] * 100000) / df_cases_filtered["HZ"]
+
+    # Create the scatter plot
+#    fig = px.scatter(df_cases_filtered, x="Inhabitants", y="Faelle", hover_name="Stadt",
+#                     title="Crimes vs. Inhabitants per City",
+#                     labels={"Inhabitants": "Number of Inhabitants", "Faelle": "Number of Crimes"})
+    
+#    st.plotly_chart(fig, use_container_width=True)
+    
+    # Prepare the data for training
+#    X = df_cases_filtered["Inhabitants"].values.reshape(-1, 1)  # Features (Inhabitants)
+#    y = df_cases_filtered["Faelle"].values  # Target variable (Number of Crimes)
+    
+    # Split data into 90% training and 10% validation
+#    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=42)
+
+    # Initialize the Random Forest Regressor
+#    rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+
+    # Train the model on the training data
+#    rf_model.fit(X_train, y_train)
+
+    # Make predictions on the validation data
+#    y_pred = rf_model.predict(X_val)
+
+    # Calculate the Mean Squared Error (MSE) on the validation data
+#    mse = mean_squared_error(y_val, y_pred)
+
+    # Calculate the R-squared (R²) score for the validation data
+#    r_squared = r2_score(y_val, y_pred)
+
+    # Display the results
+#    st.write(f"Mean Squared Error (MSE) on validation data: {mse:.2#f}")
+#    st.write(f"R-squared (R²) on validation data: {r_squared:.2f}")
+
+#    # Plot the predicted vs actual values
+#    fig_rf = px.scatter(df_cases_filtered, x="Inhabitants", y="Faelle", hover_name="Stadt",
+#                        title="Crimes vs. Inhabitants with Random Forest Predictions",
+#                        labels={"Inhabitants": "Number of Inhabitants", "Faelle": "Number of Crimes"})
+#    fig_rf.add_scatter(x=X_val.flatten(), y=y_pred, mode='markers', name="Predictions", marker=dict(color='red'))
+#    st.plotly_chart(fig_rf, use_container_width=True) 
 
 # Function to display city information
 def display_city_info(city):
@@ -210,6 +314,7 @@ def create_cases_page():
     fig_cases = px.bar(df_filtered_cases, x='Stadt', y='Faelle', title="Cases per City")
     st.plotly_chart(fig_cases)
     st.dataframe(df_filtered_cases)
+    plot_crimes_vs_inhabitants()
 
 def create_victims_page():
     st.title("😢 Opfer")
@@ -232,6 +337,7 @@ def create_perpetrators_page():
     st.title("🦹‍♂️ Tatverdächtige")
     st.markdown("### Visualisierung der Daten zu Tatverdächtigen")
     st.divider()
+
     years = sorted(df_perps['Jahr'].unique(), reverse=True)
     crime_types = df_perps['Straftat'].unique()
     
