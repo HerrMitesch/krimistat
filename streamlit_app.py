@@ -7,11 +7,13 @@ import geopandas as gpd
 @st.cache_data
 def load_data():
     df_cases = pd.read_csv(f"Faelle_combined_clean.csv")#, encoding='ISO-8859-1', sep=';')
-    df_victims = pd.read_csv(f"Opfer_Tabellen/final_processed_data.csv")#, encoding='ISO-8859-1', sep=';')
-    df_perps = pd.read_csv(f"Tatverdaechtige_combined_clean.csv")#, encoding='ISO-8859-1', sep=';')
-    return df_cases, df_victims, df_perps
+    df_victims = pd.read_csv(f"Opfer_Tabell/Opfer_combined_clean_2016_2023.csv", encoding='ISO-8859-1', sep=';')
+    #df_perps = pd.read_csv(f"Tatverdaechtige_combined_clean.csv")#, encoding='ISO-8859-1', sep=';')
+    return df_cases, df_victims
+    #return df_cases, df_victims, df_perps
 
-df_cases, df_victims, df_perps = load_data()
+#df_cases, df_victims, df_perps = load_data()
+df_cases, df_victims= load_data()
 
 def load_germany_map():
     return gpd.read_file("https://raw.githubusercontent.com/johan/world.geo.json/master/countries/DEU.geo.json")
@@ -146,24 +148,25 @@ def create_victims_page():
     st.plotly_chart(fig_victims)
     st.dataframe(df_filtered_victims)
 
-def create_perpetrators_page():
-    st.title("Täter")
-    years = sorted(df_perps['Jahr'].unique(), reverse=True)
-    crime_types = df_perps['Straftat'].unique()
+#def create_perpetrators_page():
+    #st.title("Täter")
+    #years = sorted(df_perps['Jahr'].unique(), reverse=True)
+    #crime_types = df_perps['Straftat'].unique()
     
-    selected_year = st.selectbox("Select Year", years, index=0)
-    selected_crime = st.selectbox("Select Crime Type", crime_types)
+    #selected_year = st.selectbox("Select Year", years, index=0)
+    #selected_crime = st.selectbox("Select Crime Type", crime_types)
     
-    df_filtered_perps = df_perps[(df_perps['Jahr'] == selected_year) & (df_perps['Straftat'] == selected_crime)]
+    #df_filtered_perps = df_perps[(df_perps['Jahr'] == selected_year) & (df_perps['Straftat'] == selected_crime)]
     
-    st.metric("Total Perpetrators", df_filtered_perps['gesamt'].sum())
-    fig_perps = px.histogram(df_filtered_perps, x='Erwachsene_gesamt', title="Age Distribution of Perpetrators")
-    st.plotly_chart(fig_perps)
-    st.dataframe(df_filtered_perps)
+    #st.metric("Total Perpetrators", df_filtered_perps['gesamt'].sum())
+    #fig_perps = px.histogram(df_filtered_perps, x='Erwachsene_gesamt', title="Age Distribution of Perpetrators")
+    #st.plotly_chart(fig_perps)
+    #st.dataframe(df_filtered_perps)
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Übersicht", "Fälle", "Opfer", "Täter"])
+#page = st.sidebar.radio("Go to", ["Übersicht", "Fälle", "Opfer", "Täter"])
+page = st.sidebar.radio("Go to", ["Übersicht", "Fälle", "Opfer"])
 
 # Page Selection
 if page == "Übersicht":
@@ -172,5 +175,5 @@ elif page == "Fälle":
     create_cases_page()
 elif page == "Opfer":
     create_victims_page()
-elif page == "Täter":
-    create_perpetrators_page()
+#elif page == "Täter":
+    #create_perpetrators_page()
