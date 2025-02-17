@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import geopandas as gpd
-
+import random
+st.set_page_config(layout="wide")
 # Load Data (Assumed already cleaned)
 @st.cache_data
 def load_data():
@@ -102,19 +103,95 @@ def get_city_coordinates():
     {'Stadt': 'Rostock, Hanse- und Universitätsstadt', 'lat': 54.092423, 'lon': 12.099147},]
     )
 
-def create_map(df_filtered_cases):
-     return px.scatter_mapbox(df_filtered_cases, lat='lat', lon='lon', size='Faelle', hover_name='Stadt',
-                             title="Crime Cases Map", mapbox_style="carto-positron", zoom=5, height=700, width=1000)
+def get_city_population(city):
+    return random.randint(50000, 1000000)
 
+# Placeholder function for city images
+def get_city_image(city):
+    return "https://via.placeholder.com/400"
+
+# Function to create the map
+def create_map(df_filtered_cases):
+    fig = px.scatter_mapbox(df_filtered_cases, lat='lat', lon='lon', size='Faelle', hover_name='Stadt',
+                            title="Crime Cases Map", mapbox_style="carto-positron", zoom=5, height=700, width=1000)
+    
+    fig.update_layout(clickmode='event+select')  # Enable click events
+    return fig
+
+    
+
+# Function to display city information
+def display_city_info(city):
+    st.subheader(f"Crime Statistics for {city}")
+    inhabitants = get_city_population(city)
+    st.write(f"Number of Inhabitants: {inhabitants}")
+
+    city_image_url = get_city_image(city)
+    st.image(city_image_url, caption=f"Characteristic view of {city}")
+
+    city_crime_data = df_cases[df_cases['Stadt'] == city].groupby(['Jahr', 'Straftat'])['Faelle'].sum().reset_index()
+    top_crimes = city_crime_data.groupby('Straftat')['Faelle'].sum().nlargest(10).index
+    city_crime_data = city_crime_data[city_crime_data['Straftat'].isin(top_crimes)]
+
+    fig_crime_trends = px.line(city_crime_data, x='Jahr', y='Faelle', color='Straftat', title=f"Top 10 Crimes in {city} Over Time")
+    st.plotly_chart(fig_crime_trends)
+
+# Function to create the main overview page
 def create_overview_page():
-    st.title("Crime Data Exploration - German BKA")
-    st.subheader("Overview")
-    
+    st.title("👮‍♀️ krimistat")
+    st.markdown("### Eine visuelle Erkundung der Kriminalitätsstatistik der Deutschen Polizei von 2016 bis 2023.")
+    st.divider()
+
+
+    years = sorted(df_cases['Jahr'].unique(), reverse=True)
+    crime_types = df_cases['Vereinfachte_Straftat'].unique()
+
+    st.sidebar.title("Options")
+    selected_year = st.sidebar.selectbox("Select Year", df_cases["Jahr"].unique(), index=0)
+    selected_crime = "Straftaten insgesamt" #st.selectbox("Select Crime Type", crime_types)
+
+    # Merge coordinates
     city_coords = get_city_coordinates()
-    df_cases_with_coords = df_cases.merge(city_coords, on='Stadt', how='left')
+    df_filtered_cases = df_cases[(df_cases['Jahr'] == selected_year) & (df_cases['Vereinfachte_Straftat'] == selected_crime)]
+    df_cases_with_coords = df_filtered_cases.merge(city_coords, on='Stadt', how='left')
+    c1, c2 = st.columns(2)
+    with c1:
+        fig_map = create_map(df_cases_with_coords)
+        click_data = st.plotly_chart(fig_map, use_container_width=True)
+
+    with c2: 
+        # Filter by selected year and remove rows where "Vereinfachte_Straftat" contains "insgesamt"
+        filtered_df = df_cases[(df_cases['Jahr'] == selected_year) & ~df_cases['Vereinfachte_Straftat'].str.contains("insgesamt", case=False, na=False)]
+
+        # Aggregate by summing the "Faelle" column
+        top_crimes = filtered_df.groupby("Vereinfachte_Straftat")["Faelle"].sum().nlargest(10)
+
+        # Plot if there is data
+        if not top_crimes.empty:
+            fig_pie = px.pie(top_crimes, values=top_crimes.values, names=top_crimes.index, title="Top 10 Most Common Crimes")
+            st.plotly_chart(fig_pie)
+        else:
+            st.warning(f"No crime data available for {selected_year}.")   
+
+        st.info("krimistat ist eine graphische Auswertung der Kriminalitätsstatistik der deutschen Polizei von 2016 bis 2023.") 
+        st.info('📌 [Mehr zur Polizeilichen Kriminalstatistik beim BKA](https://www.bka.de/DE/AktuelleInformationen/StatistikenLagebilder/PolizeilicheKriminalstatistik/pks_node.html)', icon="ℹ️")
+
+def create_data_page():
+    st.title("📊 Rohdaten")
+    st.markdown("### Rohdaten zu Fällen, Opfern und Tatverdächtigen")
+    st.divider()
     
-    fig_map = create_map(df_cases_with_coords)
-    st.plotly_chart(fig_map)
+    st.subheader("Fälle")
+    st.dataframe(df_cases)
+    st.divider()
+    
+    st.subheader("Opfer")
+    st.dataframe(df_victims)
+    st.divider()
+
+    st.subheader("Tatverdächtige")
+    st.dataframe(df_perps)
+
 
 def create_cases_page():
     st.title("Fälle")
@@ -163,11 +240,13 @@ def create_perpetrators_page():
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Übersicht", "Fälle", "Opfer", "Täter"])
+page = st.sidebar.radio("Go to", ["Übersicht", "Rohdaten", "Fälle", "Opfer", "Täter"])
 
 # Page Selection
 if page == "Übersicht":
     create_overview_page()
+elif page == "Rohdaten":
+    create_data_page()
 elif page == "Fälle":
     create_cases_page()
 elif page == "Opfer":
