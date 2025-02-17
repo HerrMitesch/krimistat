@@ -194,7 +194,10 @@ def create_data_page():
 
 
 def create_cases_page():
-    st.title("Fälle")
+    st.title("🔪 Fälle")
+    st.markdown("### Visualisierung der Falldaten")
+    st.divider()
+
     years = sorted(df_cases['Jahr'].unique(), reverse=True)
     crime_types = df_cases['Straftat'].unique()
     
@@ -209,7 +212,9 @@ def create_cases_page():
     st.dataframe(df_filtered_cases)
 
 def create_victims_page():
-    st.title("Opfer")
+    st.title("😢 Opfer")
+    st.markdown("### Visualisierung der Opferdaten")
+    st.divider()
     years = sorted(df_victims['Jahr'].unique(), reverse=True)
     crime_types = df_victims['Straftat'].unique()
     
@@ -224,7 +229,9 @@ def create_victims_page():
     st.dataframe(df_filtered_victims)
 
 def create_perpetrators_page():
-    st.title("Täter")
+    st.title("🦹‍♂️ Tatverdächtige")
+    st.markdown("### Visualisierung der Daten zu Tatverdächtigen")
+    st.divider()
     years = sorted(df_perps['Jahr'].unique(), reverse=True)
     crime_types = df_perps['Straftat'].unique()
     
