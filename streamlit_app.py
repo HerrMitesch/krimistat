@@ -131,7 +131,7 @@ def get_city_image(city):
 # Function to create the map
 def create_map(df_filtered_cases):
     fig = px.scatter_mapbox(df_filtered_cases, lat='lat', lon='lon', size='Faelle', hover_name='Stadt',
-                            title="Crime Cases Map", mapbox_style="carto-positron", zoom=4.9, height=700, width=1000)
+                            title="Straftaten Karte", mapbox_style="carto-positron", zoom=4.9, height=700, width=1000)
     
     fig.update_layout(clickmode='event+select')  # Enable click events
     return fig
@@ -156,39 +156,47 @@ def plot_crimes_vs_inhabitants():
                      title="Crimes vs. Inhabitants per City",
                      labels={"Inhabitants": "Number of Inhabitants", "Faelle": "Number of Crimes"})
     
-    st.plotly_chart(fig, use_container_width=True)
+    show_fit = st.toggle("Fit anzeigen", value=False)
+
+    if show_fit:
+        # Prepare the data for training
+        X = df_cases_filtered["Inhabitants"].values.reshape(-1, 1)  # Features (Inhabitants)
+        y = df_cases_filtered["Faelle"].values  # Target variable (Number of Crimes)
     
-    # Prepare the data for training
-    X = df_cases_filtered["Inhabitants"].values.reshape(-1, 1)  # Features (Inhabitants)
-    y = df_cases_filtered["Faelle"].values  # Target variable (Number of Crimes)
-    
-    # Split data into 90% training and 10% validation
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=42)
+        # Split data into 90% training and 10% validation
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=42)
 
-    # Initialize the linear regression model
-    model = LinearRegression()
+        # Initialize the linear regression model
+        model = LinearRegression()
 
-    # Train the model on the training data
-    model.fit(X_train, y_train)
+        # Train the model on the training data
+        model.fit(X_train, y_train)
 
-    # Make predictions on the validation data
-    y_pred = model.predict(X_val)
+        # Make predictions on the validation data
+        y_pred = model.predict(X_val)
 
-    # Calculate the Mean Squared Error (MSE) on the validation data
-    mse = mean_squared_error(y_val, y_pred)
+        # Calculate the Mean Squared Error (MSE) on the validation data
+        mse = mean_squared_error(y_val, y_pred)
 
-    # Display the results
-    st.write(f"Mean Squared Error (MSE) on validation data: {mse:.2f}")
-    st.write(f"Regression Coefficients: Intercept = {model.intercept_:.2f}, Slope = {model.coef_[0]:.2f}")
+        
 
-    # Plot the regression line along with the data points
-    fig_regression = px.scatter(df_cases_filtered, x="Inhabitants", y="Faelle", hover_name="Stadt",
+        # Plot the regression line along with the data points
+        fig_regression = px.scatter(df_cases_filtered, x="Inhabitants", y="Faelle", hover_name="Stadt",
                                 title="Crimes vs. Inhabitants with Regression Line",
                                 labels={"Inhabitants": "Number of Inhabitants", "Faelle": "Number of Crimes"})
-    fig_regression.add_scatter(x=df_cases_filtered["Inhabitants"], 
+        fig_regression.add_scatter(x=df_cases_filtered["Inhabitants"], 
                                y=model.predict(df_cases_filtered["Inhabitants"].values.reshape(-1, 1)), 
                                mode='lines', name="Regression Line", line=dict(color='red'))
-    st.plotly_chart(fig_regression, use_container_width=True)
+        st.plotly_chart(fig_regression, use_container_width=True)
+        # Display the results
+        #st.write(f"Mean Squared Error (MSE) on validation data: {mse:.2f}")
+        #st.write(f"Regression Coefficients: Intercept = {model.intercept_:.2f}, Slope = {model.coef_[0]:.2f}")
+    else:
+        st.plotly_chart(fig, use_container_width=True)
+    
+    
+    
+    
 
 
 #def plot_crimes_vs_inhabitants():
@@ -252,6 +260,88 @@ def display_city_info(city):
     fig_crime_trends = px.line(city_crime_data, x='Jahr', y='Faelle', color='Straftat', title=f"Top 10 Crimes in {city} Over Time")
     st.plotly_chart(fig_crime_trends)
 
+def plot_gender_distribution(df_filtered, selected_city, selected_year):
+    """Plots absolute gender distribution for different crimes."""
+    
+    if df_filtered.empty:
+        st.warning(f"No data available for {selected_city} in {selected_year}.")
+        return
+
+    # Aggregate data if "All Cities" is selected
+    if selected_city == "All Cities":
+        df_filtered = df_filtered.groupby("Vereinfachte_Straftat", as_index=False)[["Tatverdaechtige_maennlich", "Tatverdaechtige_weiblich"]].sum()
+
+    # Compute gender imbalance (absolute difference)
+    df_filtered["Imbalance"] = abs(df_filtered["Tatverdaechtige_maennlich"] - df_filtered["Tatverdaechtige_weiblich"])
+
+    # Sort by gender imbalance (largest difference first)
+    df_filtered = df_filtered.sort_values(by="Imbalance", ascending=False)
+
+    # Convert to long format for grouped bar plot
+    df_long = df_filtered.melt(id_vars=["Vereinfachte_Straftat"], 
+                               value_vars=["Tatverdaechtige_maennlich", "Tatverdaechtige_weiblich"],
+                               var_name="Gender", value_name="Number")
+
+    # Rename gender labels
+    df_long["Gender"] = df_long["Gender"].replace({
+        "Tatverdaechtige_maennlich": "Male",
+        "Tatverdaechtige_weiblich": "Female"
+    })
+
+    # Create grouped bar chart
+    fig = px.bar(df_long, 
+                 x="Vereinfachte_Straftat", 
+                 y="Number", 
+                 color="Gender",
+                 barmode="group", 
+                 title=f"Gender Distribution of Crimes in {selected_city} ({selected_year})",
+                 labels={"Vereinfachte_Straftat": "Crime Type", "Number": "Number of Suspects"},
+                 height=600)
+
+    st.plotly_chart(fig)
+
+def plot_gender_fraction(df_filtered, selected_city, selected_year):
+    """Plots gender fraction for different crimes as a stacked bar chart."""
+    
+    if df_filtered.empty:
+        st.warning(f"No data available for {selected_city} in {selected_year}.")
+        return
+
+    # Aggregate data if "All Cities" is selected
+    if selected_city == "Alle Städte":
+        df_filtered = df_filtered.groupby("Vereinfachte_Straftat", as_index=False)[["Tatverdaechtige_maennlich", "Tatverdaechtige_weiblich"]].sum()
+
+    # Compute gender fraction
+    df_filtered["Total"] = df_filtered["Tatverdaechtige_maennlich"] + df_filtered["Tatverdaechtige_weiblich"]
+    df_filtered["Male Fraction"] = df_filtered["Tatverdaechtige_maennlich"] / df_filtered["Total"]
+    df_filtered["Female Fraction"] = df_filtered["Tatverdaechtige_weiblich"] / df_filtered["Total"]
+
+    # Sort by gender imbalance (largest difference first)
+    df_filtered = df_filtered.sort_values(by="Male Fraction", ascending=False)
+    # Convert to long format
+    df_long = df_filtered.melt(id_vars=["Vereinfachte_Straftat"], 
+                               value_vars=["Male Fraction", "Female Fraction"],
+                               var_name="Gender", value_name="Fraction")
+
+    # Rename gender labels
+    df_long["Gender"] = df_long["Gender"].replace({
+        "Male Fraction": "Male",
+        "Female Fraction": "Female"
+    })
+
+    # Create stacked bar chart
+    fig = px.bar(df_long, 
+                 x="Vereinfachte_Straftat", 
+                 y="Fraction", 
+                 color="Gender",
+                 barmode="relative",  # Stacked bar chart
+                 title=f"Gender Fraction of Crimes in {selected_city} ({selected_year})",
+                 labels={"Vereinfachte_Straftat": "Crime Type", "Fraction": "Gender Proportion"},
+                 height=600)
+
+    st.plotly_chart(fig)
+
+
 # Function to create the main overview page
 #def create_overview_page():
     #st.title("👮‍♀️ krimistat")
@@ -259,39 +349,6 @@ def display_city_info(city):
     #st.divider()
 
 
-    #years = sorted(df_cases['Jahr'].unique(), reverse=True)
-    #crime_types = df_cases['Straftat'].unique()
-    
-
-    #st.sidebar.title("Options")
-    #selected_year = st.sidebar.selectbox("Select Year", df_cases["Jahr"].unique(), index=0)
-    #selected_crime = "Straftaten insgesamt" #st.selectbox("Select Crime Type", crime_types)
-
-    # Merge coordinates
-    #city_coords = get_city_coordinates()
-    #df_filtered_cases = df_cases[(df_cases['Jahr'] == selected_year) & (df_cases['Straftat'] == selected_crime)]
-    #df_cases_with_coords = df_filtered_cases.merge(city_coords, on='Stadt', how='left')
-    #c1, c2 = st.columns(2)
-    #with c1:
-        #fig_map = create_map(df_cases_with_coords)
-        #click_data = st.plotly_chart(fig_map, use_container_width=True)
-
-    #with c2: 
-        # Filter by selected year and remove rows where "Straftat" contains "insgesamt"
-        #filtered_df = df_cases[(df_cases['Jahr'] == selected_year) & ~df_cases['Straftat'].str.contains("insgesamt", case=False, na=False)]
-
-        # Aggregate by summing the "Faelle" column
-        #top_crimes = filtered_df.groupby("Straftat")["Faelle"].sum().nlargest(10)
-
-        # Plot if there is data
-        #if not top_crimes.empty:
-            #fig_pie = px.pie(top_crimes, values=top_crimes.values, names=top_crimes.index, title="Top 10 Most Common Crimes")
-            #st.plotly_chart(fig_pie)
-        #else:
-            #st.warning(f"No crime data available for {selected_year}.")   
-
-        #st.info("krimistat ist eine graphische Auswertung der Kriminalitätsstatistik der deutschen Polizei von 2016 bis 2023.") 
-        #st.info('📌 [Mehr zur Polizeilichen Kriminalstatistik beim BKA](https://www.bka.de/DE/AktuelleInformationen/StatistikenLagebilder/PolizeilicheKriminalstatistik/pks_node.html)', icon="ℹ️")
 
 def create_overview_page():
     st.title("Crime Data Exploration - German BKA")
@@ -336,22 +393,59 @@ def create_data_page():
 
 
 def create_cases_page():
-    st.title("🔪 Fälle")
+    st.title("🔫 Fälle")
     st.markdown("### Visualisierung der Falldaten")
     st.divider()
 
     years = sorted(df_cases['Jahr'].unique(), reverse=True)
-    crime_types = df_cases['Straftat'].unique()
+    crime_types = df_cases['Vereinfachte_Straftat'].unique()
+
+    st.sidebar.title("Options")
+    selected_year = st.sidebar.slider("Select Year", min_value=2016, max_value = 2023, value = 2020)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        
+        selected_crime = st.selectbox("Select Crime Type", crime_types)
+        city_coords = get_city_coordinates()
+        df_filtered_cases = df_cases[(df_cases['Jahr'] == selected_year) & (df_cases['Vereinfachte_Straftat'] == selected_crime)]
+        df_cases_with_coords = df_filtered_cases.merge(city_coords, on='Stadt', how='left')
+        fig_map = create_map(df_cases_with_coords)
+        click_data = st.plotly_chart(fig_map, use_container_width=True)
+
+    with c2: 
+        # Filter by selected year and remove rows where "Vereinfachte_Straftat" contains "insgesamt"
+        filtered_df = df_cases[(df_cases['Jahr'] == selected_year) & ~df_cases['Vereinfachte_Straftat'].str.contains("insgesamt", case=False, na=False)]
+
+        # Aggregate by summing the "Faelle" column
+        top_crimes = filtered_df.groupby("Vereinfachte_Straftat")["Faelle"].sum().nlargest(10)
+
+        # Plot if there is data
+        if not top_crimes.empty:
+            fig_pie = px.pie(top_crimes, values=top_crimes.values, names=top_crimes.index, title="Top 10 Most Common Crimes")
+            st.plotly_chart(fig_pie)
+        else:
+            st.warning(f"No crime data available for {selected_year}.")   
+    st.divider()
+    # City filter
+    cities = ["Alle Städte"] + sorted(df_cases["Stadt"].unique().tolist())
+    selected_city = st.selectbox("Select a city:", cities, index=0)
+    display_mode = st.selectbox("Darstellungsform:", ["absolut","relativ"], index=0)
+
+    # Filter data based on selected city
+    if selected_city == "Alle Städte":
+        df_filtered = df_cases  # Use full dataset
+    else:
+        df_filtered = df_cases[(df_cases["Jahr"] == selected_year)&(df_cases["Stadt"] == selected_city)& ~df_cases['Vereinfachte_Straftat'].str.contains("insgesamt", case=False, na=False)]
+    years = sorted(df_cases['Jahr'].unique(), reverse=True)
+    crime_types = df_cases['Vereinfachte_Straftat'].unique()
+
+    if display_mode == "absolut":
+        plot_gender_distribution(df_filtered, selected_city,selected_year)
+    elif display_mode == "relativ":
+        plot_gender_fraction(df_filtered, selected_city,selected_year)
     
-    selected_year = st.selectbox("Select Year", years, index=0)
-    selected_crime = st.selectbox("Select Crime Type", crime_types)
-    
-    df_filtered_cases = df_cases[(df_cases['Jahr'] == selected_year) & (df_cases['Straftat'] == selected_crime)]
-    
-    st.metric("Total Cases", df_filtered_cases['Faelle'].sum())
-    fig_cases = px.bar(df_filtered_cases, x='Stadt', y='Faelle', title="Cases per City")
-    st.plotly_chart(fig_cases)
-    st.dataframe(df_filtered_cases)
+    st.divider()
     plot_crimes_vs_inhabitants()
 
 def create_victims_page():
