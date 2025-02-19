@@ -657,7 +657,7 @@ def create_perpetrators_page():
     st.plotly_chart(fig)
 
 def create_regression_page():
-    st.title("🦹‍♂️ Verbrechen vs. Einwohner")
+    st.title("📈 Verbrechen vs. Einwohner")
     st.markdown("### Zusammenhang zwischen Einwohnerzahl und Anzahl der Verbrechen")
     st.divider()
     plot_crimes_vs_inhabitants()
