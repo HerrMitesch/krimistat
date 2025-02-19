@@ -353,7 +353,7 @@ def plot_gender_fraction(df_filtered, selected_city, selected_year):
 def create_overview_page():
     st.title("Crime Data Exploration - German BKA")
     st.image(r"C:\Users\PC\Desktop\Projekt_Weiterbildung\krimistat\Opfer_Tabell\invest.webp", use_container_width=True)
-    st.subheader("Summary Metrics")
+    st.subheader("Zusammenfassung Metriken")
     
     total_cases = df_cases['Faelle'].sum() if 'Faelle' in df_cases.columns else "N/A"
     total_victims = df_victims['Oper insgesamt'].sum() if 'Oper insgesamt' in df_victims.columns else "N/A"
@@ -361,11 +361,11 @@ def create_overview_page():
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Cases", total_cases)
+        st.metric("Gesamtzahl der Fälle", total_cases)
     with col2:
-        st.metric("Total Victims", total_victims)
+        st.metric("Gesamtzahl der Opfer", total_victims)
     with col3:
-        st.metric("Total Perpetrators", total_perpetratrors)
+        st.metric("Gesamtzahl der Täter", total_perpetratrors)
     
     st.write(
         """
@@ -402,32 +402,98 @@ def create_cases_page():
 
     st.sidebar.title("Options")
     selected_year = st.sidebar.slider("Select Year", min_value=2016, max_value = 2023, value = 2020)
-
-    c1, c2 = st.columns(2)
-    with c1:
+    
+    #selected_year = st.selectbox("Select Year", years, index=0)
+    selected_crime = st.selectbox("Wählen Sie die Art der Straftat aus", crime_types)
+    
+    df_filtered_cases = df_cases[(df_cases['Jahr'] == selected_year) & (df_cases['Straftat'] == selected_crime)]
+    
+    st.metric("Gesamtzahl der Fälle", df_filtered_cases['Faelle'].sum())
+    
+    
+    
+    # Load Data (Assuming df_dashboard is already loaded)
+    st.title("Dashboard")
+    
+    # City Filter
+    city_list = ["Alle"] + sorted(df_dashboard["Stadt"].unique().tolist())
+    selected_city = st.selectbox("Wählen Sie die Stadt aus", city_list)
+    
+    #Crime Type Filter
+    #selected_crime = st.selectbox("Select Crime Type", crime_types)
+    crime_list=["Alle"] + sorted(df_dashboard["Straftat"].unique().tolist())
+    selected_crime= st.selectbox("Wählen Sie die Art der Straftat aus",crime_list)
+    
+    # Filter Data
+    if selected_city != "Alle":
         
-        selected_crime = st.selectbox("Select Crime Type", crime_types)
+        df_filtered = df_dashboard[df_dashboard["Stadt"] == selected_city]
+    else:
+        df_filtered = df_dashboard
+    
+    if selected_crime != "Alle":
+        df_filtered = df_filtered[df_filtered["Straftat"] == selected_crime]
+    else:
+        df_filtered=df_dashboard
+    #######
+    
+    # Create subplots
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+
+    
+    
+    ######
+    # Layout: Side-by-Side Charts (Map + Pie Chart)
+    c1, c2 = st.columns(2)
+
+    with c1:
+        #st.subheader("📍 Kriminalitätskarte")
         city_coords = get_city_coordinates()
-        df_filtered_cases = df_cases[(df_cases['Jahr'] == selected_year) & (df_cases['Vereinfachte_Straftat'] == selected_crime)]
         df_cases_with_coords = df_filtered_cases.merge(city_coords, on='Stadt', how='left')
         fig_map = create_map(df_cases_with_coords)
-        click_data = st.plotly_chart(fig_map, use_container_width=True)
+        st.plotly_chart(fig_map, use_container_width=True)
 
-    with c2: 
-        # Filter by selected year and remove rows where "Vereinfachte_Straftat" contains "insgesamt"
+    with c2:
+        #st.subheader("🔝 Top 10 Kriminalitätsarten")
         filtered_df = df_cases[(df_cases['Jahr'] == selected_year) & ~df_cases['Vereinfachte_Straftat'].str.contains("insgesamt", case=False, na=False)]
-
-        # Aggregate by summing the "Faelle" column
         top_crimes = filtered_df.groupby("Vereinfachte_Straftat")["Faelle"].sum().nlargest(10)
 
-        # Plot if there is data
         if not top_crimes.empty:
             fig_pie = px.pie(top_crimes, values=top_crimes.values, names=top_crimes.index, title="Top 10 Most Common Crimes")
-            st.plotly_chart(fig_pie)
+            st.plotly_chart(fig_pie, use_container_width=True)
         else:
-            st.warning(f"No crime data available for {selected_year}.")   
+            st.warning(f"Keine Kriminalitätsdaten für {selected_year} verfügbar.")   
+
     st.divider()
-    # City filter
+
+    
+    ###
+
+    #c1, c2 = st.columns(2)
+    #with c1:
+        
+        #selected_crime = st.selectbox("Select Crime Type", crime_types)
+        #city_coords = get_city_coordinates()
+        #df_filtered_cases = df_cases[(df_cases['Jahr'] == selected_year) & (df_cases['Vereinfachte_Straftat'] == selected_crime)]
+        #df_cases_with_coords = df_filtered_cases.merge(city_coords, on='Stadt', how='left')
+        #fig_map = create_map(df_cases_with_coords)
+        #click_data = st.plotly_chart(fig_map, use_container_width=True)
+
+    #with c2: 
+        # Filter by selected year and remove rows where "Vereinfachte_Straftat" contains "insgesamt"
+        #filtered_df = df_cases[(df_cases['Jahr'] == selected_year) & ~df_cases['Vereinfachte_Straftat'].str.contains("insgesamt", case=False, na=False)]
+
+        # Aggregate by summing the "Faelle" column
+        #top_crimes = filtered_df.groupby("Vereinfachte_Straftat")["Faelle"].sum().nlargest(10)
+
+        # Plot if there is data
+        #if not top_crimes.empty:
+            #fig_pie = px.pie(top_crimes, values=top_crimes.values, names=top_crimes.index, title="Top 10 Most Common Crimes")
+            #st.plotly_chart(fig_pie)
+        #else:
+            #st.warning(f"No crime data available for {selected_year}.")   
+    #st.divider()
+    #City filter
     cities = ["Alle Städte"] + sorted(df_cases["Stadt"].unique().tolist())
     selected_city = st.selectbox("Select a city:", cities, index=0)
     display_mode = st.selectbox("Darstellungsform:", ["absolut","relativ"], index=0)
@@ -455,26 +521,40 @@ def create_victims_page():
     years = sorted(df_victims['Jahr'].unique(), reverse=True)
     crime_types = df_victims['Straftat'].unique()
     
-    selected_year = st.selectbox("Select Year", years, index=0)
-    selected_crime = st.selectbox("Select Crime Type", crime_types)
+    st.sidebar.title("Optionen")
+    selected_year = st.sidebar.slider("Jahr auswählen", min_value=2016, max_value = 2023, value = 2020)
+    
+    #selected_year = st.selectbox("Select Year", years, index=0)
+    selected_crime = st.selectbox("Wählen Sie die Art der Straftat aus", crime_types)
     
     df_filtered_victims = df_victims[(df_victims['Jahr'] == selected_year) & (df_victims['Straftat'] == selected_crime)]
     
-    st.metric("Total Victims", df_filtered_victims['Oper insgesamt'].sum())
+    st.metric("Gesamtzahl der Opfer", df_filtered_victims['Oper insgesamt'].sum())
     
     # Load Data (Assuming df_dashboard is already loaded)
-    st.title("Crime Dashboard")
+    st.title("Dashboard")
 
     # City Filter
-    city_list = ["All"] + sorted(df_dashboard["Stadt"].unique().tolist())
-    selected_city = st.selectbox("Select a City", city_list)
+    city_list = ["Alle"] + sorted(df_dashboard["Stadt"].unique().tolist())
+    selected_city = st.selectbox("Wählen Sie die Stadt aus", city_list)
+    
+    #Crime Type Filter
+    #selected_crime = st.selectbox("Select Crime Type", crime_types)
+    crime_list=["Alle"] + sorted(df_dashboard["Straftat"].unique().tolist())
+    selected_crime= st.selectbox("Wählen Sie die Art der Straftat aus",crime_list)
 
     # Filter Data
-    if selected_city != "All":
+    if selected_city != "Alle":
         
         df_filtered = df_dashboard[df_dashboard["Stadt"] == selected_city]
     else:
         df_filtered = df_dashboard
+    
+    if selected_crime != "Alle":
+        df_filtered = df_filtered[df_filtered["Straftat"] == selected_crime]
+    else:
+        df_filtered=df_dashboard
+    
 
     # Create subplots
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
@@ -538,30 +618,107 @@ def create_victims_page():
     #st.dataframe(df_filtered_victims)
 
 
+
 def create_perpetrators_page():
     st.title("🦹‍♂️ Tatverdächtige")
     st.markdown("### Visualisierung der Daten zu Tatverdächtigen")
     st.divider()
 
+    # Sidebar Filters
+    st.sidebar.title("🔍 Filter")
+    selected_year = st.sidebar.slider("Jahr auswählen", min_value=2016, max_value=2023, value=2020)
+
     years = sorted(df_perps['Jahr'].unique(), reverse=True)
     crime_types = df_perps['Straftat'].unique()
+    selected_crime = st.sidebar.selectbox("Wählen Sie die Art der Straftat aus", crime_types)
+
+    df_filtered_perps = df_perps[(df_perps['Jahr'] == selected_year) & (df_perps['Straftat'] == selected_crime)]
+
+    # Display Total Perpetrators Metric
+    st.metric("Gesamtzahl der Tatverdächtigen", df_filtered_perps['gesamt'].sum())
+    
+    # Load Data (Assuming df_dashboard is already loaded)
+    st.title("Dashboard")
+    
+    # City filter & Gender Distribution
+    cities = ["Alle Städte"] + sorted(df_perps["Stadt"].unique().tolist())
+    selected_city = st.selectbox("Wählen Sie eine Stadt:", cities, index=0)
+    
+    #Crime Type Filter
+    #selected_crime = st.selectbox("Select Crime Type", crime_types)
+    crime_list=["Alle"] + sorted(df_dashboard["Straftat"].unique().tolist())
+    selected_crime= st.selectbox("Wählen Sie die Art der Straftat aus",crime_list)
+
+
+    if selected_city != "Alle Städte":
+        df_filtered = df_perps[(df_perps["Jahr"] == selected_year) & (df_perps["Stadt"] == selected_city)]
+    else:
+        df_filtered = df_perps
+
+    if selected_crime != "Alle":
+        df_filtered = df_filtered[df_filtered["Straftat"] == selected_crime]
+    else:
+        df_filtered=df_dashboard
+        
+    # Layout: Side-by-Side Charts
+    c1, c2 = st.columns(2)
+
+    with c1:
+        #st.subheader("📊 Altersverteilung der Tatverdächtigen")
+        fig_perps = px.histogram(df_filtered_perps, x='Erwachsene_gesamt', title="Age Distribution of Perpetrators")
+        st.plotly_chart(fig_perps, use_container_width=True)
+
+    with c2:
+        #st.subheader("📈 Kriminalitätstrends (2014-2023)")
+        crime_trend = df_perps.groupby("Jahr")["gesamt"].sum()
+        fig_trend, ax = plt.subplots(figsize=(6, 4))
+        sns.lineplot(x=crime_trend.index, y=crime_trend.values, marker="o", ax=ax)
+        ax.set_title("Tatverdächtige Trends (2014-2023)")
+        ax.set_xlabel("Jahr")
+        ax.set_ylabel("Gesamtzahl der Tatverdächtigen")
+        st.pyplot(fig_trend)
+
+    #st.divider()
+
+
+    c3,c4 = st.columns(2)
+    #c4 = st.columns(1)
+
+    with c3:
+        #st.subheader("🔵 Geschlechterverteilung der Tatverdächtigen")
+        #gender_counts = df_filtered[['M',"W"]].sum()
+        #fig_gender = px.pie(names=gender_counts.index, values=gender_counts.values, title="Tatverdächtige nach Geschlecht")
+        #st.plotly_chart(fig_gender, use_container_width=True)
+        #fig_perps = px.histogram(df_filtered_perps, x='Erwachsene_gesamt', title="Age Distribution of Perpetrators")
+        #st.plotly_chart(fig_perps, use_container_width=True)# Count occurrences of M and W in the "sexus" column
+        gender_counts = df_filtered['Sexus'].value_counts()
+
+        # Create a pie chart with the gender distribution
+        fig_gender = px.pie(names=gender_counts.index, values=gender_counts.values, title="Tatverdächtige nach Geschlecht")
+        st.plotly_chart(fig_gender, use_container_width=True)
+    with c4:
+        #st.subheader("🏙️ Tatverdächtige nach Stadt (Heatmap)")
+        top_20_cities = df_perps.groupby("Stadt")["gesamt"].sum().nlargest(20).index
+        df_filtered_top20 = df_perps[df_perps["Stadt"].isin(top_20_cities)]
+        df_pivot = df_filtered_top20.pivot_table(values="gesamt", index="Stadt", columns="Jahr", aggfunc="sum", fill_value=0)
+        fig_heatmap, ax = plt.subplots(figsize=(6, 4))
+        sns.heatmap(df_pivot, cmap="Reds", linewidths=0.5, ax=ax)
+        ax.set_title("Tatverdächtige nach Stadt über die Jahre")
+        st.pyplot(fig_heatmap)
+
+    #st.divider()
+
+    # Display Data Table
+    #st.subheader("📋 Detaillierte Daten")
+    #st.dataframe(df_filtered_perps)
 
     
-    selected_year = st.selectbox("Select Year", years, index=0)
-    selected_crime = st.selectbox("Select Crime Type", crime_types)
-    
-    df_filtered_perps = df_perps[(df_perps['Jahr'] == selected_year) & (df_perps['Straftat'] == selected_crime)]
-    
-    st.metric("Total Perpetrators", df_filtered_perps['gesamt'].sum())
-    fig_perps = px.histogram(df_filtered_perps, x='Erwachsene_gesamt', title="Age Distribution of Perpetrators")
-    st.plotly_chart(fig_perps)
-    st.dataframe(df_filtered_perps)
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
 
 
-page = st.sidebar.radio("Go to", ["Übersicht", "Rohdaten", "Fälle", "Opfer", "Täter"])
+page = st.sidebar.radio("geh zu", ["Übersicht", "Rohdaten", "Fälle", "Opfer", "Täter"])
 
 
 # Page Selection
