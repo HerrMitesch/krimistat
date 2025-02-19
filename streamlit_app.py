@@ -10,6 +10,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 import seaborn as sns
 import matplotlib.pyplot as plt
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
 # Load Data (Assumed already cleaned)
@@ -131,7 +133,7 @@ def get_city_image(city):
 # Function to create the map
 def create_map(df_filtered_cases):
     fig = px.scatter_mapbox(df_filtered_cases, lat='lat', lon='lon', size='Faelle', hover_name='Stadt',
-                            title="Straftaten Karte", mapbox_style="carto-positron", zoom=4.9, height=700, width=1000)
+                            title="Straftaten Karte", mapbox_style="carto-positron", zoom=4.9, height=820, width=1000)
     
     fig.update_layout(clickmode='event+select')  # Enable click events
     return fig
@@ -352,8 +354,10 @@ def plot_gender_fraction(df_filtered, selected_city, selected_year):
 
 def create_overview_page():
     st.title("Crime Data Exploration - German BKA")
-    st.image(r"C:\Users\PC\Desktop\Projekt_Weiterbildung\krimistat\Opfer_Tabell\invest.webp", use_container_width=True)
+
+    st.image(r"Opfer_Tabell\invest.webp", use_container_width=True)
     st.subheader("Zusammenfassung Metriken")
+
     
     total_cases = df_cases['Faelle'].sum() if 'Faelle' in df_cases.columns else "N/A"
     total_victims = df_victims['Oper insgesamt'].sum() if 'Oper insgesamt' in df_victims.columns else "N/A"
@@ -462,7 +466,42 @@ def create_cases_page():
             fig_pie = px.pie(top_crimes, values=top_crimes.values, names=top_crimes.index, title="Top 10 Most Common Crimes")
             st.plotly_chart(fig_pie, use_container_width=True)
         else:
+
             st.warning(f"Keine Kriminalitätsdaten für {selected_year} verfügbar.")   
+
+              
+
+        # Remove "Straftaten insgesamt" from data
+        df_filtered = df_cases[~df_cases["Vereinfachte_Straftat"].str.contains("insgesamt", case=False, na=False)]
+
+        # Apply year filter
+        # df_filtered = df_filtered[df_filtered["Jahr"] == selected_year]
+
+        # Summarize cases per crime type
+        df_total_per_crime = df_filtered.groupby("Vereinfachte_Straftat")["Faelle"].sum().reset_index()
+
+        # Get the 10 most frequent crimes
+        top_10_crimes = df_total_per_crime.nlargest(10, "Faelle")["Vereinfachte_Straftat"]
+
+        # Filter data for only top 10 crimes
+        df_top_crimes = df_filtered[df_filtered["Vereinfachte_Straftat"].isin(top_10_crimes)]
+
+        # Group by year and crime type
+        df_grouped = df_top_crimes.groupby(["Jahr", "Vereinfachte_Straftat"])["Faelle"].sum().reset_index()
+
+        # Create interactive line plot
+        fig = px.line(df_grouped, 
+              x="Jahr", 
+              y="Faelle", 
+              color="Vereinfachte_Straftat",
+              markers=True,
+              title=f"Top 10 Verbrechen zwischen 2016 und 2023",
+              labels={"Jahr": "Year", "Faelle": "Number of Cases", "Vereinfachte_Straftat": "Crime Type"})
+
+        # Show the plot in Streamlit
+        st.plotly_chart(fig)
+
+
 
     st.divider()
 
@@ -512,7 +551,7 @@ def create_cases_page():
         plot_gender_fraction(df_filtered, selected_city,selected_year)
     
     st.divider()
-    plot_crimes_vs_inhabitants()
+    #plot_crimes_vs_inhabitants()
 
 def create_victims_page():
     st.title("😢 Opfer")
@@ -601,124 +640,106 @@ def create_victims_page():
 
     # Display plots
     st.pyplot(fig)
-    
-    
-
-    
-        
-    
-
-     
-    
-    
-    
-    
-    #fig_victims = px.pie(df_filtered_victims, values='Oper insgesamt', names='Fallstatus', title="Victim Distribution")
-    #st.plotly_chart(fig_victims)
-    #st.dataframe(df_filtered_victims)
-
-
 
 def create_perpetrators_page():
     st.title("🦹‍♂️ Tatverdächtige")
     st.markdown("### Visualisierung der Daten zu Tatverdächtigen")
     st.divider()
 
-    # Sidebar Filters
-    st.sidebar.title("🔍 Filter")
-    selected_year = st.sidebar.slider("Jahr auswählen", min_value=2016, max_value=2023, value=2020)
 
-    years = sorted(df_perps['Jahr'].unique(), reverse=True)
-    crime_types = df_perps['Straftat'].unique()
-    selected_crime = st.sidebar.selectbox("Wählen Sie die Art der Straftat aus", crime_types)
-
-    df_filtered_perps = df_perps[(df_perps['Jahr'] == selected_year) & (df_perps['Straftat'] == selected_crime)]
-
-    # Display Total Perpetrators Metric
-    st.metric("Gesamtzahl der Tatverdächtigen", df_filtered_perps['gesamt'].sum())
     
-    # Load Data (Assuming df_dashboard is already loaded)
-    st.title("Dashboard")
-    
-    # City filter & Gender Distribution
-    cities = ["Alle Städte"] + sorted(df_perps["Stadt"].unique().tolist())
-    selected_city = st.selectbox("Wählen Sie eine Stadt:", cities, index=0)
-    
-    #Crime Type Filter
-    #selected_crime = st.selectbox("Select Crime Type", crime_types)
-    crime_list=["Alle"] + sorted(df_dashboard["Straftat"].unique().tolist())
-    selected_crime= st.selectbox("Wählen Sie die Art der Straftat aus",crime_list)
+    # ---- FILTERS ----
+    years = sorted(df_perps["Jahr"].unique(), reverse=True)
+    st.sidebar.title("Options")
+    selected_year = st.sidebar.slider("Select Year", min_value=2016, max_value = 2023, value = 2020)
+
+    cities = ["All Cities"] + sorted(df_perps["Stadt"].dropna().unique())
+    selected_city = st.sidebar.selectbox("Select City", cities, index=0)
+
+    # Apply filters
+    df_filtered = df_perps[df_perps["Jahr"] == selected_year]
+    if selected_city != "All Cities":
+        df_filtered = df_filtered[df_filtered["Stadt"] == selected_city]
 
 
-    if selected_city != "Alle Städte":
-        df_filtered = df_perps[(df_perps["Jahr"] == selected_year) & (df_perps["Stadt"] == selected_city)]
+    # ---- 3️⃣ TOP CRIMES BY GENDER ----
+    selected_crime = st.sidebar.selectbox("Select a Crime Type", df_filtered["Vereinfachte_Straftat"].unique())
+
+    # ----  Histogram Toggle ----
+    histogram_type = st.toggle("Histogramm reskalieren", value=False)  
+
+    # Define age bins
+    age_bins = {
+        "Alter_unter_6": (0, 6),
+        "Alter_6_bis_8": (6, 8),
+        "Alter_8_bis_10": (8, 10),
+        "Alter_10_bis_12": (10, 12),
+        "Alter_12_bis_14": (12, 14),
+        "Alter_14_bis_16": (14, 16),
+        "Alter_16_bis_18": (16, 18),
+        "Alter_18_bis_21": (18, 21),
+        "Alter_21_bis_25": (21, 25),
+        "Alter_25_bis_30": (25, 30),
+        "Alter_30_bis_40": (30, 40),
+        "Alter_40_bis_50": (40, 50),
+        "Alter_50_bis_60": (50, 60),
+        "Alter_ueber_60": (60, 80)  # Assume max age is 80 for visualization
+    }
+
+    # Filter dataset based on selected crime type
+    df_filtered_crime = df_filtered[df_filtered["Vereinfachte_Straftat"] == selected_crime]
+
+    # Prepare age data
+    age_data = []
+    for age_group, (start_age, end_age) in age_bins.items():
+        total_cases = df_filtered_crime[age_group].sum()
+        age_data.append({"Age Group": age_group, "Start Age": start_age, "End Age": end_age, "Cases": total_cases})
+
+    df_age = pd.DataFrame(age_data)
+
+    # ---- Create Histograms ----
+    if histogram_type:
+        fig = go.Figure()
+        for _, row in df_age.iterrows():
+            fig.add_trace(go.Bar(
+                x=[(row["Start Age"] + row["End Age"]) / 2],  # Center the bar
+                y=[row["Cases"] / (row["End Age"] - row["Start Age"])],  # Normalize for width
+                width=[row["End Age"] - row["Start Age"]],  # Proper width
+                text=[f"{row['Cases']} cases"],
+                textposition="outside",
+                name=f"{row['Start Age']} - {row['End Age']}"
+            ))
+
+        fig.update_layout(
+            title=f"Altersverteilung der Tatverdächtigen (reskaliert) - {selected_crime}",
+            xaxis_title="Alter",
+            yaxis_title="Fälle pro Jahr",
+            xaxis=dict(tickmode="linear", dtick=2),  # Add ticks every 2 years
+            showlegend=False
+        )
     else:
-        df_filtered = df_perps
+        fig = px.bar(df_age, x="Age Group", y="Cases", 
+                    labels={"Age Group":"Altersgruppe",
+                    "Cases":"Fälle pro Jahr"},
+                    title=f"Altersverteilung der Tatverdächtigen - {selected_crime}",
+                    text_auto=True)
 
-    if selected_crime != "Alle":
-        df_filtered = df_filtered[df_filtered["Straftat"] == selected_crime]
-    else:
-        df_filtered=df_dashboard
-        
-    # Layout: Side-by-Side Charts
-    c1, c2 = st.columns(2)
+    st.plotly_chart(fig)
 
-    with c1:
-        #st.subheader("📊 Altersverteilung der Tatverdächtigen")
-        fig_perps = px.histogram(df_filtered_perps, x='Erwachsene_gesamt', title="Age Distribution of Perpetrators")
-        st.plotly_chart(fig_perps, use_container_width=True)
+def create_regression_page():
+    st.title("📈 Verbrechen vs. Einwohner")
+    st.markdown("### Zusammenhang zwischen Einwohnerzahl und Anzahl der Verbrechen")
+    st.divider()
+    plot_crimes_vs_inhabitants()
 
-    with c2:
-        #st.subheader("📈 Kriminalitätstrends (2014-2023)")
-        crime_trend = df_perps.groupby("Jahr")["gesamt"].sum()
-        fig_trend, ax = plt.subplots(figsize=(6, 4))
-        sns.lineplot(x=crime_trend.index, y=crime_trend.values, marker="o", ax=ax)
-        ax.set_title("Tatverdächtige Trends (2014-2023)")
-        ax.set_xlabel("Jahr")
-        ax.set_ylabel("Gesamtzahl der Tatverdächtigen")
-        st.pyplot(fig_trend)
-
-    #st.divider()
-
-
-    c3,c4 = st.columns(2)
-    #c4 = st.columns(1)
-
-    with c3:
-        #st.subheader("🔵 Geschlechterverteilung der Tatverdächtigen")
-        #gender_counts = df_filtered[['M',"W"]].sum()
-        #fig_gender = px.pie(names=gender_counts.index, values=gender_counts.values, title="Tatverdächtige nach Geschlecht")
-        #st.plotly_chart(fig_gender, use_container_width=True)
-        #fig_perps = px.histogram(df_filtered_perps, x='Erwachsene_gesamt', title="Age Distribution of Perpetrators")
-        #st.plotly_chart(fig_perps, use_container_width=True)# Count occurrences of M and W in the "sexus" column
-        gender_counts = df_filtered['Sexus'].value_counts()
-
-        # Create a pie chart with the gender distribution
-        fig_gender = px.pie(names=gender_counts.index, values=gender_counts.values, title="Tatverdächtige nach Geschlecht")
-        st.plotly_chart(fig_gender, use_container_width=True)
-    with c4:
-        #st.subheader("🏙️ Tatverdächtige nach Stadt (Heatmap)")
-        top_20_cities = df_perps.groupby("Stadt")["gesamt"].sum().nlargest(20).index
-        df_filtered_top20 = df_perps[df_perps["Stadt"].isin(top_20_cities)]
-        df_pivot = df_filtered_top20.pivot_table(values="gesamt", index="Stadt", columns="Jahr", aggfunc="sum", fill_value=0)
-        fig_heatmap, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(df_pivot, cmap="Reds", linewidths=0.5, ax=ax)
-        ax.set_title("Tatverdächtige nach Stadt über die Jahre")
-        st.pyplot(fig_heatmap)
-
-    #st.divider()
-
-    # Display Data Table
-    #st.subheader("📋 Detaillierte Daten")
-    #st.dataframe(df_filtered_perps)
-
-    
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
 
 
-page = st.sidebar.radio("geh zu", ["Übersicht", "Rohdaten", "Fälle", "Opfer", "Täter"])
+
+page = st.sidebar.radio("geh zu", ["Übersicht", "Rohdaten", "Fälle", "Opfer", "Täter","Regression"])
+
 
 
 # Page Selection
@@ -732,3 +753,5 @@ elif page == "Opfer":
     create_victims_page()
 elif page == "Täter":
     create_perpetrators_page()
+elif page == "Regression": 
+    create_regression_page()
