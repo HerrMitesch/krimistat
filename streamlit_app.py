@@ -601,18 +601,18 @@ def create_victims_page():
     # Crime Trends Over the Years
     crime_trend = df_filtered.groupby("Jahr")["Oper insgesamt"].sum()
     sns.lineplot(x=crime_trend.index, y=crime_trend.values, marker="o", ax=axes[0, 0])
-    axes[0, 0].set_title("Crime Trends (2014-2023)")
-    axes[0, 0].set_xlabel("Year")
-    axes[0, 0].set_ylabel("Total Crimes")
+    axes[0, 0].set_title("Kriminalitätstrends (2016–2023)")
+    axes[0, 0].set_xlabel("Jahr")
+    axes[0, 0].set_ylabel("Gesamtzahl opfer")
 
     # Male vs Female Victim Trends
     crime_trend_male = df_filtered.groupby("Jahr")["Opfer maennlich"].sum()
     crime_trend_female = df_filtered.groupby("Jahr")["Opfer weiblich"].sum()
     sns.lineplot(x=crime_trend_male.index, y=crime_trend_male.values, marker="o", label="Male Victims", ax=axes[0, 1])
     sns.lineplot(x=crime_trend_female.index, y=crime_trend_female.values, marker="s", label="Female Victims", ax=axes[0, 1])
-    axes[0, 1].set_title("Male vs Female Victim Trends (2014-2023)")
-    axes[0, 1].set_xlabel("Year")
-    axes[0, 1].set_ylabel("Total Victims")
+    axes[0, 1].set_title("Trends bei männlichen vs. weiblichen Opfern (2016–2023)")
+    axes[0, 1].set_xlabel("Jahr")
+    axes[0, 1].set_ylabel("Gesamtzahl opfer")
     axes[0, 1].legend()
 
     # Crime Heatmap (Top 20 Cities)
@@ -620,22 +620,22 @@ def create_victims_page():
     df_filtered_top20 = df_dashboard[df_dashboard["Stadt"].isin(top_20_cities)]
     df_pivot = df_filtered_top20.pivot_table(values="Oper insgesamt", index="Stadt", columns="Jahr", aggfunc="sum", fill_value=0)
     sns.heatmap(df_pivot, cmap="Blues", linewidths=0.5, ax=axes[1, 0])
-    axes[1, 0].set_title("Victims by City Over Time")
+    axes[1, 0].set_title("Opfer nach Stadt im Zeitverlauf")
 
     # Victim Distribution by Age Category
     age_categories = {
-    "Opfer - Kinder bis unter 6 Jahre - insgesamt": "0-5 years",
-    "Opfer Kinder 6 bis unter 14 Jahre - insgesamt": "6-13 years",
-    "Opfer Jugendliche 14 bis unter 18 Jahre - insgesamt": "14-17 years",
-    "Opfer - Heranwachsende 18 bis unter 21 Jahre - insgesamt": "18-20 years",
-    "Opfer Erwachsene 21 bis unter 60 Jahre - insgesamt": "21-59 years",
-    "Opfer - Erwachsene 60 Jahre und aelter - insgesamt": "60+ years"
+    "Opfer - Kinder bis unter 6 Jahre - insgesamt": "0-5 Jahre",
+    "Opfer Kinder 6 bis unter 14 Jahre - insgesamt": "6-13 Jahre",
+    "Opfer Jugendliche 14 bis unter 18 Jahre - insgesamt": "14-17 Jahre",
+    "Opfer - Heranwachsende 18 bis unter 21 Jahre - insgesamt": "18-20 Jahre",
+    "Opfer Erwachsene 21 bis unter 60 Jahre - insgesamt": "21-59 Jahre",
+    "Opfer - Erwachsene 60 Jahre und aelter - insgesamt": "60+ Jahre"
 }
     df_age_victims = df_filtered[list(age_categories.keys())].sum().rename(index=age_categories)
     sns.barplot(x=df_age_victims.index, y=df_age_victims.values, palette="Blues", ax=axes[1, 1])
-    axes[1, 1].set_title("Victim Distribution by Age Category")
-    axes[1, 1].set_xlabel("Age Category")
-    axes[1, 1].set_ylabel("Number of Victims")
+    axes[1, 1].set_title("Opferverteilung nach Alterskategorie")
+    axes[1, 1].set_xlabel("Alterskategorie")
+    axes[1, 1].set_ylabel("Gesamtzahl der Opfer")
     axes[1, 1].set_xticklabels(axes[1, 1].get_xticklabels(), rotation=45)
 
     # Display plots
