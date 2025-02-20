@@ -89,7 +89,7 @@ def plot_gender_distribution(df_filtered, selected_city, selected_year):
         return
 
     # Aggregate data if "All Cities" is selected
-    if selected_city == "All Cities":
+    if selected_city == "Alle Städte":
         df_filtered = df_filtered.groupby("Vereinfachte_Straftat", as_index=False)[["Tatverdaechtige_maennlich", "Tatverdaechtige_weiblich"]].sum()
 
     # Compute gender imbalance (absolute difference)

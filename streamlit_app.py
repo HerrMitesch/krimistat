@@ -282,12 +282,12 @@ def create_perpetrators_page():
     st.sidebar.title("Optionen")
     selected_year = st.sidebar.slider("Jahr auswählen", min_value=2016, max_value = 2023, value = 2020)
 
-    cities = ["All Cities"] + sorted(df_perps["Stadt"].dropna().unique())
+    cities = ["Alle Städte"] + sorted(df_perps["Stadt"].dropna().unique())
     selected_city = st.sidebar.selectbox("Stadt auswählen", cities, index=0)
 
     # Apply filters
     df_filtered = df_perps[df_perps["Jahr"] == selected_year]
-    if selected_city != "All Cities":
+    if selected_city != "Alle Städte":
         df_filtered = df_filtered[df_filtered["Stadt"] == selected_city]
 
 
