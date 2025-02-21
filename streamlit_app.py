@@ -149,7 +149,7 @@ def create_cases_page():
               color="Vereinfachte_Straftat",
               markers=True,
               title=f"Top 10 Verbrechen zwischen 2016 und 2023",
-              labels={"Jahr": "Year", "Faelle": "Number of Cases", "Vereinfachte_Straftat": "Crime Type"})
+              labels={"Jahr": "Jahr", "Faelle": "Anzahl Fälle", "Vereinfachte_Straftat": "Straftat"})
 
         # Show the plot in Streamlit
         st.plotly_chart(fig)
