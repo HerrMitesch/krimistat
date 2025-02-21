@@ -21,15 +21,6 @@ def create_map(df_filtered_cases):
     fig.update_layout(clickmode='event+select')  # Enable click events
     return fig
 
-def plot_crimes_vs_inhabitants(df_cases):
-    df_cases_filtered = df_cases[(df_cases["HZ"] > 0) & (df_cases['Straftat'] == "Straftaten insgesamt")]  # Avoid division by zero
-    df_cases_filtered["Inhabitants"] = (df_cases_filtered["Faelle"] * 100000) / df_cases_filtered["HZ"]
-
-    fig = px.scatter(df_cases_filtered, x="Inhabitants", y="Faelle", hover_name="Stadt",
-                     title="Crimes vs. Inhabitants per City",
-                     labels={"Inhabitants": "Number of Inhabitants", "Faelle": "Number of Crimes"})
-
-    st.plotly_chart(fig, use_container_width=True)    
 
 def plot_crimes_vs_inhabitants(df_cases):
     # Filter out rows where "HZ" is 0 to avoid division by zero

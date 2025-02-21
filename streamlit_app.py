@@ -26,7 +26,7 @@ def create_overview_page():
     st.subheader("Zusammenfassung Metriken")
     st.write(
         """
-        Willkommen bei der Crime Data Exploration. Nutzen Sie die Seitenleiste, um zwischen den verschiedenen Seiten zu navigieren. 
+        Willkommen bei krimistat. Nutzen Sie die Seitenleiste, um zwischen den verschiedenen Seiten zu navigieren. 
         Entdecken Sie die Gesamtdaten auf der Übersichtsseite, detaillierte Fallinformationen auf der Fälle-Seite, 
         Opferdetails auf der Opfer-Seite und schließlich Täterdetails auf der Täter-Seite.
         """
@@ -116,7 +116,7 @@ def create_cases_page():
         top_crimes = filtered_df.groupby("Vereinfachte_Straftat")["Faelle"].sum().nlargest(10)
 
         if not top_crimes.empty:
-            fig_pie = px.pie(top_crimes, values=top_crimes.values, names=top_crimes.index, title="Top 10 Most Common Crimes")
+            fig_pie = px.pie(top_crimes, values=top_crimes.values, names=top_crimes.index, title="Top 10 Häufigste Verbrechen")
             st.plotly_chart(fig_pie, use_container_width=True)
         else:
 
@@ -149,7 +149,7 @@ def create_cases_page():
               color="Vereinfachte_Straftat",
               markers=True,
               title=f"Top 10 Verbrechen zwischen 2016 und 2023",
-              labels={"Jahr": "Year", "Faelle": "Number of Cases", "Vereinfachte_Straftat": "Crime Type"})
+              labels={"Jahr": "Jahr", "Faelle": "Anzahl Fälle", "Vereinfachte_Straftat": "Straftat"})
 
         # Show the plot in Streamlit
         st.plotly_chart(fig)
@@ -235,8 +235,8 @@ def create_victims_page():
     crime_trend_male = df_filtered.groupby("Jahr")["Opfer maennlich"].sum()
     crime_trend_female = df_filtered.groupby("Jahr")["Opfer weiblich"].sum()
 
-    sns.lineplot(x=crime_trend_male.index, y=crime_trend_male.values, marker="o", label="Male Victims", ax=axes[0, 1])
-    sns.lineplot(x=crime_trend_female.index, y=crime_trend_female.values, marker="s", label="Female Victims", ax=axes[0, 1])
+    sns.lineplot(x=crime_trend_male.index, y=crime_trend_male.values, marker="o", label="Männlich", ax=axes[0, 1])
+    sns.lineplot(x=crime_trend_female.index, y=crime_trend_female.values, marker="s", label="Weiblich", ax=axes[0, 1])
     axes[0, 1].set_title("Trends bei männlichen vs. weiblichen Opfern (2016–2023)")
     axes[0, 1].set_xlabel("Jahr")
     axes[0, 1].set_ylabel("Gesamtzahl Opfer")
@@ -334,7 +334,7 @@ def create_perpetrators_page():
                 x=[(row["Start Age"] + row["End Age"]) / 2],  # Center the bar
                 y=[row["Cases"] / (row["End Age"] - row["Start Age"])],  # Normalize for width
                 width=[row["End Age"] - row["Start Age"]],  # Proper width
-                text=[f"{row['Cases']} cases"],
+                text=[f"{row['Cases']} "],
                 textposition="outside",
                 name=f"{row['Start Age']} - {row['End Age']}"
             ))
