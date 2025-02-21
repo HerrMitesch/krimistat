@@ -342,14 +342,14 @@ def create_perpetrators_page():
         fig.update_layout(
             title=f"Altersverteilung der Tatverdächtigen (reskaliert) - {selected_crime}",
             xaxis_title="Alter",
-            yaxis_title="Fälle pro Jahr",
+            yaxis_title="Täter pro Jahr",
             xaxis=dict(tickmode="linear", dtick=2),  # Add ticks every 2 years
             showlegend=False
         )
     else:
         fig = px.bar(df_age, x="Age Group", y="Cases", 
                     labels={"Age Group":"Altersgruppe",
-                    "Cases":"Fälle pro Jahr"},
+                    "Cases":"Täter pro Jahr"},
                     title=f"Altersverteilung der Tatverdächtigen - {selected_crime}",
                     text_auto=True)
 
